@@ -27,10 +27,10 @@ for (const style of ['icons', 'text', 'both']) {
 }
 check(!settings.settings_schema.get_key('display-style').range_check(new GLib.Variant('s', 'invalid')), 'Unknown display style rejected');
 check(settings.get_int('icon-size') === 12, 'Default icon size');
-settings.set_int('icon-size', 16);
-check(settings.get_int('icon-size') === 16, 'Icon size saves');
+settings.set_int('icon-size', 32);
+check(settings.get_int('icon-size') === 32, 'Larger icon size saves');
 check(!settings.settings_schema.get_key('icon-size').range_check(new GLib.Variant('i', 9)), 'Icon minimum enforced');
-check(!settings.settings_schema.get_key('icon-size').range_check(new GLib.Variant('i', 17)), 'Icon maximum enforced');
+check(!settings.settings_schema.get_key('icon-size').range_check(new GLib.Variant('i', 33)), 'Icon maximum enforced');
 check(settings.get_string('disk-path') === '/', 'Default root filesystem');
 check(settings.get_string('interface') === '', 'Legacy automatic interface retained');
 check(!settings.get_boolean('bits'), 'Legacy byte units retained');

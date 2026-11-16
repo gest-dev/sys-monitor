@@ -5,12 +5,17 @@ pasta="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 uuid='medidor-rede@gezer.local'
 pacote="$pasta/dist/$uuid.shell-extension.zip"
 
-for comando in gnome-shell gnome-extensions gjs; do
+for comando in gnome-shell gnome-extensions gjs python3 ss; do
     if ! command -v "$comando" >/dev/null; then
         echo "Comando necessário não encontrado: $comando" >&2
         exit 1
     fi
 done
+if ! python3 -c 'import gi; gi.require_version("Gtk", "4.0"); gi.require_version("Adw", "1"); from gi.repository import Gtk, Adw' 2>/dev/null; then
+    echo 'O monitor de tráfego requer Python com GTK 4 e libadwaita.' >&2
+    echo 'No Ubuntu: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1' >&2
+    exit 1
+fi
 versao="$(gnome-shell --version)"
 if [[ ! "$versao" =~ GNOME\ Shell\ 50\. ]]; then
     echo "Esta versão foi preparada para GNOME 50. Versão encontrada: $versao" >&2

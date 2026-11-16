@@ -3,6 +3,8 @@
 .monitor-sistema-indicator { spacing: 2px; }
 .monitor-sistema-value { font-family: monospace; font-weight: normal; }
 .monitor-sistema-title { font-weight: bold; }
+.monitor-sistema-size-button { min-width: 20px; padding: 3px 6px; border-radius: 6px; }
+.monitor-sistema-size-value { min-width: 42px; text-align: center; }
 .monitor-sistema-download { color: #82cfff; }
 .monitor-sistema-upload { color: #7ee2b8; }
 .monitor-sistema-cpu { color: #b7e58a; }

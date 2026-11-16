@@ -55,7 +55,7 @@
       <summary>Identificar os indicadores com ícones, texto ou ambos; números sempre visíveis</summary>
     </key>
     <key name="icon-size" type="i">
-      <range min="10" max="16"/>
+      <range min="10" max="32"/>
       <default>12</default>
       <summary>Tamanho dos ícones em pixels</summary>
     </key>

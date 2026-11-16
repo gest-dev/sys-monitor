@@ -7,6 +7,10 @@ memória e espaço ocupado em disco. Clique no indicador para escolher o que mos
 As cores diferenciam os indicadores; uso alto de CPU, RAM ou disco recebe destaque
 em âmbar/vermelho. As cores também podem ser desligadas nesse menu.
 
+Em **Abrir monitor de tráfego**, acompanhe conexões TCP/UDP, processos, IPs e
+portas em uma janela própria, com busca, gráfico da interface, pausa e contadores
+TCP disponíveis. Não requer Node.js, sudo ou captura de pacotes.
+
 Exemplo com identificação por texto:
 
 ```text

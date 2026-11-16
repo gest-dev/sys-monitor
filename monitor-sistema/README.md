@@ -1,8 +1,8 @@
 # Monitor do Sistema
 
 Extensão local para a barra superior do Ubuntu com GNOME 50. Monitora a rede,
-o processador, a memória RAM e o espaço ocupado no disco. Não requer internet,
-programas extras ou privilégios de administrador durante o uso.
+o processador, a memória RAM e o espaço ocupado no disco. Não requer internet
+ou privilégios de administrador durante o uso.
 
 O padrão mostra ícones + números. Exemplo com identificação por texto, no modo
 compacto: `↓4,2M/s ↑350K/s CPU12% RAM48% D180G`.
@@ -13,11 +13,33 @@ reservam largura fixa. Clique no monitor para abrir o menu:
 - **Mostrar na barra**: ligue/desligue download, upload, CPU, RAM, disco e rede
   acumulada individualmente. Os detalhes continuam disponíveis no menu.
   Se desligar tudo, um pequeno `•` mantém o acesso às configurações.
+- **Abrir monitor de tráfego**: abre uma janela nativa com conexões TCP/UDP,
+  aplicativos/processos e PIDs disponíveis, estado, IP local/remoto e portas.
+  A busca aceita processo, PID, IP e porta; o seletor filtra TCP/UDP. Duplo
+  clique abre os detalhes, com opção para copiar. Cliques repetidos no menu
+  apresentam a mesma janela.
+  Os cartões e o gráfico mostram a velocidade da **interface selecionada**;
+  a tabela mostra conexões de **todas as interfaces**. Automática escolhe uma
+  interface pela rota padrão; também é possível escolher uma manualmente.
+  O acumulado começa ao abrir a janela e pode ser zerado; trocar a interface
+  reinicia esse acumulado. Ele é independente do acumulado da barra.
+  A atualização ocorre a cada 2 segundos e pode ser pausada. Enquanto pausada,
+  a janela não contabiliza tráfego; ao retomar, estabelece uma nova amostra base.
+  Fechar a janela interrompe suas leituras.
+  Taxas por conexão e totais são **TCP**, quando fornecidos pelo sistema; os
+  totais contam desde a abertura do socket e as taxas exigem duas amostras.
+  UDP mostra IPs, portas e processo, com `—` nos contadores indisponíveis.
+  Conexões que abrem e fecham entre amostras podem não aparecer. Processos de
+  outros usuários podem ficar indisponíveis. Não captura pacotes, não decifra
+  HTTPS/TLS, não faz consultas externas nem grava histórico.
 - **Aparência**: modo compacto ou espaçado, fonte de 9 a 14 px e cores opcionais.
   Em **Identificação dos indicadores**, escolha **Ícones + números** (padrão),
   **Texto + números** ou **Ícones, texto e números**. Os números continuam
-  visíveis em todos os modos. Em **Tamanho dos ícones**, escolha 10, 12, 14 ou
-  16 px; o padrão é 12 px. Ícones e texto têm tamanhos independentes.
+  visíveis em todos os modos. No início de **Aparência**, use **− / +** em
+  **Tamanho dos ícones** para ajustar de **10 a 32 px**, de 2 em 2 px;
+  o padrão é 12 px. O tamanho atual aparece entre os botões e muda imediatamente,
+  sem fechar o menu. Role a lista para ver as outras opções abaixo.
+  Ícones e texto têm tamanhos independentes.
   Os seis SVGs acompanham o pacote, sem depender de ícones instalados no tema.
   Download azul, upload verde, CPU verde-claro, RAM lilás e disco ciano.
   CPU a partir de 70% e RAM/disco a partir de 80% ficam em âmbar;
@@ -56,6 +78,15 @@ o instalador copia a versão instalada para `backups/anterior-…`. A atualizaç
 requer sair da sessão e entrar novamente para carregar os novos módulos do GNOME.
 Uma primeira instalação pode também precisar de um novo login para ser reconhecida.
 Não é necessário reiniciar o computador. O instalador não encerra sua sessão.
+
+A janela usa **Python 3 + PyGObject, GTK 4, libadwaita e ss (iproute2)**,
+presentes nesta instalação do Ubuntu/GNOME. O instalador confere essas
+dependências antes de atualizar. **Node.js não é necessário.**
+Para abrir a janela diretamente, sem aguardar o novo login:
+
+```bash
+python3 extension/traffic-window.py
+```
 
 O produto foi renomeado de **Medidor de Rede** para **Monitor do Sistema**.
 O UUID `medidor-rede@gezer.local` e o schema
@@ -97,18 +128,24 @@ para bytes antes da formatação decimal. Não há envio de dados nem histórico
 bash empacotar.sh
 ```
 
-Executa os testes dos cálculos, leituras reais de CPU/RAM/rede/disco e GSettings,
-valida o schema e recria o ZIP incluindo `network.js`, `system.js` e `icons/`.
+Executa os testes dos cálculos, leituras reais de CPU/RAM/rede/disco, GSettings
+e análise de conexões/cálculo de taxas. Valida o schema e recria o ZIP incluindo
+`network.js`, `system.js`, `icons/`, `traffic.py` e `traffic-window.py`.
 
 Teste de integração em GNOME isolado, sem alterar a sessão principal:
 
 ```bash
 dbus-run-session -- gnome-shell-test-tool --headless \
+  --extra-filter org.gnome.Shell.Extensions.MonitorSistema.Trafego \
+  --extra-filter org.gnome.Shell.Extensions.MonitorSistema.Trafego.Test \
   --extension "$PWD/dist/medidor-rede@gezer.local.shell-extension.zip" \
   "$PWD/tests/shell.js"
 ```
 
-O teste também grava `/tmp/monitor-sistema-preview.png`. Requer suporte a uma
+O teste também grava `/tmp/monitor-sistema-preview.png` e
+`/tmp/monitor-trafego-preview.png`. Valida a abertura pelo menu, instância única,
+conexão TCP local real, processo/PID, filtros, pausa, reset, detalhes e falhas de
+leitura. Requer suporte a uma
 sessão gráfica virtual. O [guia do GNOME 50](https://gjs.guide/extensions/upgrading/gnome-shell-50.html)
 documenta a instalação de extensões pelo test tool. As consultas de disco seguem
 [a API assíncrona Gio](https://docs.gtk.org/gio/method.File.query_filesystem_info_async.html).

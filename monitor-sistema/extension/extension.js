@@ -11,6 +11,9 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {formatAmount, parseCounters, RateTracker, selectInterface} from './network.js';
 import {CpuTracker, diskUsage, formatPercent, parseCpu, parseMemory} from './system.js';
 
+const MIN_ICON_SIZE = 10;
+const MAX_ICON_SIZE = 32;
+
 function readText(path, cancellable) {
     return new Promise((resolve, reject) => {
         Gio.File.new_for_path(path).load_contents_async(cancellable, (file, result) => {
@@ -141,9 +144,33 @@ export default class MonitorSistema extends Extension {
         this._choices.push({item, key, value});
     }
 
+    _buildIconSizeControl(menu) {
+        const row = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        row.add_child(new St.Label({text: 'Tamanho dos ícones', x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER}));
+        this._iconSizeValue = new St.Label({style_class: 'monitor-sistema-size-value',
+            y_align: Clutter.ActorAlign.CENTER});
+        this._iconSizeButtons = new Map();
+        for (const [delta, text, name] of [[-2, '−', 'Diminuir tamanho dos ícones'],
+            [2, '+', 'Aumentar tamanho dos ícones']]) {
+            const button = new St.Button({label: text, accessible_name: name, can_focus: true,
+                style_class: 'button monitor-sistema-size-button'});
+            button.connect('clicked', () => {
+                const size = this._settings.get_int('icon-size');
+                this._settings.set_int('icon-size', Math.max(MIN_ICON_SIZE, Math.min(MAX_ICON_SIZE, size + delta)));
+            });
+            row.add_child(button);
+            if (delta < 0)
+                row.add_child(this._iconSizeValue);
+            this._iconSizeButtons.set(delta, button);
+        }
+        menu.addMenuItem(row);
+    }
+
     _buildMenu() {
         const menu = this._button.menu;
         infoItem(menu, 'Monitor do Sistema', true);
+        menu.addAction('Abrir monitor de tráfego', () => this._openTrafficMonitor());
         this._connection = infoItem(menu, 'Identificando conexão…');
         this._download = infoItem(menu, 'Download: —');
         this._upload = infoItem(menu, 'Upload: —');
@@ -171,27 +198,41 @@ export default class MonitorSistema extends Extension {
             this._switch(indicators.menu, label, `show-${key}`);
         const appearance = new PopupMenu.PopupSubMenuMenuItem('Aparência');
         menu.addMenuItem(appearance);
+        this._buildIconSizeControl(appearance.menu);
         this._switch(appearance.menu, 'Modo compacto', 'compact');
         this._switch(appearance.menu, 'Cores dos indicadores', 'colors');
-        const identification = new PopupMenu.PopupSubMenuMenuItem('Identificação dos indicadores');
-        appearance.menu.addMenuItem(identification);
+        // GNOME's top menu tracks a single open submenu. Nesting another one
+        // inside Appearance closes Appearance and hides the choices.
+        appearance.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Identificação dos indicadores'));
         for (const [value, label] of [['icons', 'Ícones + números'], ['text', 'Texto + números'],
             ['both', 'Ícones, texto e números']])
-            this._choice(identification.menu, label, 'display-style', value);
-        const iconSizes = new PopupMenu.PopupSubMenuMenuItem('Tamanho dos ícones');
-        appearance.menu.addMenuItem(iconSizes);
-        for (const size of [10, 12, 14, 16])
-            this._choice(iconSizes.menu, `${size} px${size === 12 ? ' (padrão)' : ''}`, 'icon-size', size);
-        const sizes = new PopupMenu.PopupSubMenuMenuItem('Tamanho dos números');
-        appearance.menu.addMenuItem(sizes);
+            this._choice(appearance.menu, label, 'display-style', value);
+        appearance.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Tamanho dos números'));
         for (let size = 9; size <= 14; size++)
-            this._choice(sizes.menu, `${size} px${size === 10 ? ' (padrão)' : ''}`, 'font-size', size);
+            this._choice(appearance.menu, `${size} px${size === 10 ? ' (padrão)' : ''}`, 'font-size', size);
         this._interfaces = new PopupMenu.PopupSubMenuMenuItem('Interface de rede');
         menu.addMenuItem(this._interfaces);
         this._disks = new PopupMenu.PopupSubMenuMenuItem('Disco monitorado');
         menu.addMenuItem(this._disks);
         this._buildDiskChoices();
         this._switch(menu, 'Velocidade em bits/s', 'bits');
+    }
+
+    _openTrafficMonitor() {
+        try {
+            const process = Gio.Subprocess.new(['python3', this.dir.get_child('traffic-window.py').get_path()],
+                Gio.SubprocessFlags.NONE);
+            process.wait_check_async(null, (child, result) => {
+                try {
+                    child.wait_check_finish(result);
+                } catch (error) {
+                    Main.notifyError('Monitor de tráfego',
+                        `A janela foi encerrada com erro. Verifique Python 3, GTK 4 e libadwaita: ${error.message}`);
+                }
+            });
+        } catch (error) {
+            Main.notifyError('Monitor de tráfego', `Não foi possível abrir a janela: ${error.message}`);
+        }
     }
 
     _buildDiskChoices() {
@@ -215,8 +256,19 @@ export default class MonitorSistema extends Extension {
         this._box.set_style(`spacing: ${this._settings.get_boolean('compact') ? 3 : 8}px;`);
         for (const label of this._labels.values())
             label.set_style(`font-size: ${this._settings.get_int('font-size')}px;`);
+        const iconSize = this._settings.get_int('icon-size');
         for (const icon of this._icons.values())
-            icon.icon_size = this._settings.get_int('icon-size');
+            icon.icon_size = iconSize;
+        this._iconSizeValue.text = `${iconSize} px`;
+        for (const [delta, button] of this._iconSizeButtons) {
+            const enabled = delta < 0 ? iconSize > MIN_ICON_SIZE : iconSize < MAX_ICON_SIZE;
+            button.reactive = enabled;
+            button.can_focus = enabled;
+            if (enabled)
+                button.remove_style_pseudo_class('insensitive');
+            else
+                button.add_style_pseudo_class('insensitive');
+        }
     }
 
     _updateInterfaces(counters) {
@@ -403,6 +455,8 @@ export default class MonitorSistema extends Extension {
         this._icons = null;
         this._switches = null;
         this._choices = null;
+        this._iconSizeButtons = null;
+        this._iconSizeValue = null;
         this._errors = null;
         for (const key of ['_box', '_fallback', '_connection', '_download', '_upload',
             '_cpu', '_memory', '_disk', '_diskFree', '_received', '_sent', '_interfaces', '_disks'])

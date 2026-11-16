@@ -33,6 +33,38 @@ export async function run() {
     check(monitor._groups.get('memory').get_style_class_name().includes('monitor-sistema-memory') ||
         monitor._groups.get('memory').get_style_class_name().includes('monitor-sistema-warning') ||
         monitor._groups.get('memory').get_style_class_name().includes('monitor-sistema-critical'), 'Icon group inherits indicator color');
+    // Exercise the menu path: setting GSettings directly misses submenu failures.
+    const appearance = monitor._button.menu._getMenuItems()
+        .find(item => item.label?.text === 'Aparência');
+    monitor._button.menu.open();
+    appearance.activate(null);
+    await Scripting.sleep(350);
+    const iconSizeRow = appearance.menu.firstMenuItem;
+    check(iconSizeRow.get_children().some(child => child.text === 'Tamanho dos ícones'),
+        'Icon size controls appear first in Appearance');
+    const [, rowY] = iconSizeRow.get_transformed_position();
+    const [, menuY] = appearance.menu.actor.get_transformed_position();
+    check(appearance.menu.isOpen && appearance.menu.actor.mapped && rowY >= menuY &&
+        rowY + iconSizeRow.height <= menuY + appearance.menu.actor.height,
+        'Icon size controls are visible without scrolling');
+    const smaller = monitor._iconSizeButtons.get(-2);
+    const larger = monitor._iconSizeButtons.get(2);
+    smaller.emit('clicked', 1);
+    smaller.emit('clicked', 1);
+    check(settings.get_int('icon-size') === 10 && !smaller.reactive, 'Decrease clamps at 10px');
+    for (let size = 10; size <= 32; size += 2) {
+        if (size > 10)
+            larger.emit('clicked', 1);
+        await Scripting.sleep(200);
+        check(settings.get_int('icon-size') === size && [...monitor._icons.values()]
+            .every(icon => icon.icon_size === size && (!icon.get_parent().visible ||
+                (icon.width === size && icon.height === size))) &&
+            monitor._iconSizeValue.text === `${size} px` && appearance.menu.isOpen,
+        `${size}px button saves, updates its label and resizes rendered icons without closing Appearance`);
+    }
+    larger.emit('clicked', 1);
+    check(settings.get_int('icon-size') === 32 && !larger.reactive, 'Increase clamps at 32px');
+    monitor._button.menu.close();
     settings.set_int('icon-size', 16);
     check([...monitor._icons.values()].every(icon => icon.icon_size === 16), 'Icon size updates immediately');
     settings.set_int('icon-size', 12);
@@ -110,6 +142,8 @@ export async function run() {
     monitor._button.menu.open();
     await Scripting.sleep(700);
     check(monitor._button.menu.isOpen, 'Menu opens');
+    appearance.activate(null);
+    await Scripting.sleep(350);
     const stream = Gio.File.new_for_path('/tmp/monitor-sistema-preview.png')
         .replace(null, false, Gio.FileCreateFlags.NONE, null);
     await new Promise((resolve, reject) => {
@@ -136,5 +170,53 @@ export async function run() {
     await Scripting.sleep(2000);
     check(monitor._button !== null && monitor._data.disk?.total > 0, 'Re-enable samples safely');
     check(monitor._errors.size === 0, 'No errors after re-enable');
+    const trafficAction = monitor._button.menu._getMenuItems()
+        .find(item => item.label?.text === 'Abrir monitor de tráfego');
+    check(Boolean(trafficAction), 'Traffic monitor action is available');
+    trafficAction.activate(null);
+    const trafficWindows = () => global.get_window_actors().map(actor => actor.meta_window)
+        .filter(window => window.get_gtk_application_id() === 'org.gnome.Shell.Extensions.MonitorSistema.Trafego');
+    for (let attempt = 0; attempt < 12 && trafficWindows().length === 0; attempt++)
+        await Scripting.sleep(500);
+    check(trafficWindows().length === 1, 'Menu opens the native traffic window');
+    trafficAction.activate(null);
+    await Scripting.sleep(3000);
+    check(trafficWindows().length === 1, 'Repeated activation reuses one window');
+    const trafficStream = Gio.File.new_for_path('/tmp/monitor-trafego-preview.png')
+        .replace(null, false, Gio.FileCreateFlags.NONE, null);
+    await new Promise((resolve, reject) => {
+        const shooter = new Shell.Screenshot();
+        shooter.screenshot(false, trafficStream, (object, result) => {
+            try {
+                object.screenshot_finish(result);
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
+    });
+    trafficStream.close(null);
+    trafficWindows()[0].delete(global.get_current_time());
+    await Scripting.sleep(500);
+    check(trafficWindows().length === 0, 'Traffic window closes cleanly');
+    // The GTK test uses real controlled loopback sockets and runs on this
+    // disposable display, with no windows or settings in the main session.
+    const uiTestPath = Gio.File.new_for_uri(import.meta.url).get_parent()
+        .get_child('traffic-window.py').get_path();
+    const uiTest = Gio.Subprocess.new(['python3', uiTestPath],
+        Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
+    const [stdout, stderr] = await new Promise((resolve, reject) => {
+        uiTest.communicate_utf8_async(null, null, (process, result) => {
+            try {
+                const [, output, errors] = process.communicate_utf8_finish(result);
+                resolve([output, errors]);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    });
+    check(uiTest.get_successful() && stdout.includes('MONITOR_TRAFEGO_UI_OK'),
+        `Traffic UI integration failed: ${stdout}\n${stderr}`);
+    print(stdout.trim());
     print(`MONITOR_SISTEMA_SHELL_OK: ${count} verificações passaram. Largura: ${monitor._button.width}px.`);
 }
