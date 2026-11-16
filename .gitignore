@@ -1,0 +1,5 @@
+**/backups/
+**/ativacao.log
+**/gschemas.compiled
+**/__pycache__/
+*.pyc

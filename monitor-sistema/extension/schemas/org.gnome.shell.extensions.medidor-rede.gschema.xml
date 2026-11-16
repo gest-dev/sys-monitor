@@ -1,0 +1,67 @@
+<schemalist>
+  <schema id="org.gnome.shell.extensions.medidor-rede" path="/org/gnome/shell/extensions/medidor-rede/">
+    <key name="interface" type="s">
+      <default>''</default>
+      <summary>Interface de rede; vazio seleciona a rota padrão automaticamente</summary>
+    </key>
+    <key name="bits" type="b">
+      <default>false</default>
+      <summary>Exibir velocidades em bits por segundo</summary>
+    </key>
+    <key name="show-download" type="b">
+      <default>true</default>
+      <summary>Mostrar download na barra</summary>
+    </key>
+    <key name="show-upload" type="b">
+      <default>true</default>
+      <summary>Mostrar upload na barra</summary>
+    </key>
+    <key name="show-cpu" type="b">
+      <default>true</default>
+      <summary>Mostrar uso da CPU na barra</summary>
+    </key>
+    <key name="show-memory" type="b">
+      <default>true</default>
+      <summary>Mostrar uso da memória na barra</summary>
+    </key>
+    <key name="show-disk" type="b">
+      <default>true</default>
+      <summary>Mostrar espaço ocupado em disco na barra</summary>
+    </key>
+    <key name="show-total" type="b">
+      <default>false</default>
+      <summary>Mostrar tráfego acumulado da sessão na barra</summary>
+    </key>
+    <key name="compact" type="b">
+      <default>true</default>
+      <summary>Usar unidades abreviadas e menos espaço entre indicadores</summary>
+    </key>
+    <key name="colors" type="b">
+      <default>true</default>
+      <summary>Colorir indicadores e destacar uso elevado de CPU, memória e disco</summary>
+    </key>
+    <key name="font-size" type="i">
+      <range min="9" max="14"/>
+      <default>10</default>
+      <summary>Tamanho dos números em pixels</summary>
+    </key>
+    <key name="display-style" type="s">
+      <choices>
+        <choice value="icons"/>
+        <choice value="text"/>
+        <choice value="both"/>
+      </choices>
+      <default>'icons'</default>
+      <summary>Identificar os indicadores com ícones, texto ou ambos; números sempre visíveis</summary>
+    </key>
+    <key name="icon-size" type="i">
+      <range min="10" max="16"/>
+      <default>12</default>
+      <summary>Tamanho dos ícones em pixels</summary>
+    </key>
+    <key name="disk-path" type="s">
+      <default>'/'</default>
+      <summary>Caminho no sistema de arquivos monitorado</summary>
+    </key>
+  </schema>
+</schemalist>

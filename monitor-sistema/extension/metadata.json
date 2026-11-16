@@ -1,0 +1,8 @@
+{
+  "uuid": "medidor-rede@gezer.local",
+  "name": "Monitor do Sistema",
+  "description": "Monitor compacto de rede, CPU, memória e espaço ocupado em disco. Indicadores configuráveis e totais de rede da sessão.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.medidor-rede",
+  "version": 4
+}
